@@ -1,0 +1,65 @@
+(function() {
+  let lastHeight = 0;
+  let sameHeightCount = 0;
+  let totalLinksFound = 0;
+
+  console.log("🚀 Bắt đầu tự động quét thông minh... (Sẽ tự dừng khi hết trang)");
+
+  const autoScroll = setInterval(() => {
+    // 1. Cuộn xuống cuối trang
+    window.scrollTo(0, document.body.scrollHeight);
+    
+    // 2. Đếm số video hiện tại
+    const currentLinks = Array.from(document.querySelectorAll('a'))
+      .map(a => a.href)
+      .filter(href => href && (href.includes('/watch') || href.includes('/reel/') || href.includes('/videos/')));
+    
+    totalLinksFound = new Set(currentLinks.map(h => h.split('?')[0])).size;
+    
+    const currentHeight = document.body.scrollHeight;
+    console.log(`📡 Đã tìm thấy: ${totalLinksFound} video...`);
+
+    // 3. Kiểm tra xem Facebook còn tải thêm nội dung không
+    if (currentHeight === lastHeight) {
+      sameHeightCount++;
+      // Nếu sau 3 lần cuộn (khoảng 4.5 giây) chiều cao trang không đổi => Đã hết video
+      if (sameHeightCount >= 3) {
+        clearInterval(autoScroll);
+        console.log("🏁 Đã đến cuối trang! Đang tiến hành xuất file...");
+        exportLinks();
+      }
+    } else {
+      sameHeightCount = 0; // Reset nếu có nội dung mới tải ra
+      lastHeight = currentHeight;
+    }
+  }, 1500);
+
+  // Hàm xuất file
+  function exportLinks() {
+    const links = Array.from(document.querySelectorAll('a'))
+      .map(a => a.href)
+      .filter(href => href && (href.includes('/watch') || href.includes('/reel/') || href.includes('/videos/')))
+      .map(href => href.split('?')[0])
+      .filter((value, index, self) => self.indexOf(value) === index);
+
+    if (links.length > 0) {
+      const blob = new Blob([links.join('\n')], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'facebook_links.txt';
+      a.click();
+      alert(`🎉 Hoàn tất! Đã quét toàn bộ trang và tải về ${links.length} link video.`);
+    } else {
+      alert("❌ Không tìm thấy link video nào.");
+    }
+  }
+
+  // Cho phép bấm phím Escape (ESC) để dừng sớm nếu muốn xuất file ngay
+  window.addEventListener('keydown', function(e) {
+    if (e.key === "Escape") {
+      clearInterval(autoScroll);
+      alert("⏹️ Đã dừng quét theo yêu cầu. Đang xuất các link đã thu thập...");
+      exportLinks();
+    }
+  }, { once: true });
+})();
